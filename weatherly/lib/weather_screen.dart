@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'weather_api.dart';
-import 'notification_service.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -13,6 +12,92 @@ class WeatherScreen extends StatefulWidget {
 class _WeatherScreenState extends State<WeatherScreen> {
   String _weatherInfo = 'Enter a city to get started';
   bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    var weatherApi = Provider.of<WeatherApi>(context, listen: false);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Weatherly'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            Autocomplete<Map<String, dynamic>>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  return const Iterable<Map<String, dynamic>>.empty();
+                }
+                return cities.where((city) {
+                  return city['name']
+                      .toString()
+                      .toLowerCase()
+                      .startsWith(textEditingValue.text.toLowerCase());
+                });
+              },
+              displayStringForOption: (Map<String, dynamic> option) =>
+                  option['name'],
+              onSelected: (Map<String, dynamic> selection) {
+                setState(() {
+                  _isLoading = true;
+                });
+                weatherApi
+                    .fetchWeatherForecast(selection['lat'], selection['lon'])
+                    .then((data) {
+                  setState(() {
+                    _weatherInfo = _parseForecastData(data);
+                    _isLoading = false;
+                  });
+                }).catchError((error) {
+                  setState(() {
+                    _weatherInfo = "Failed to get weather forecast";
+                    _isLoading = false;
+                  });
+                });
+              },
+            ),
+            Expanded(
+              child: Center(
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : Text(_weatherInfo),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _parseForecastData(Map<String, dynamic> data) {
+    Map<String, List<double>> dailyTemperatures = {};
+
+    // Aggregate temperatures by day
+    for (var forecast in data['list']) {
+      DateTime date = DateTime.parse(forecast['dt_txt']);
+      String dateKey = '${date.year}-${date.month}-${date.day}';
+      double temp = forecast['main']['temp'];
+      if (!dailyTemperatures.containsKey(dateKey)) {
+        dailyTemperatures[dateKey] = [];
+      }
+      dailyTemperatures[dateKey]?.add(temp);
+    }
+
+    // Calculate average, max, and min temperatures for each day
+    StringBuffer buffer = StringBuffer();
+    dailyTemperatures.forEach((key, temps) {
+      double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
+      double maxTemp = temps.reduce((a, b) => a > b ? a : b);
+      double minTemp = temps.reduce((a, b) => a < b ? a : b);
+      buffer.writeln(
+          '$key - Avg Temp: ${avgTemp.toStringAsFixed(2)}°C, Max Temp: ${maxTemp.toStringAsFixed(2)}°C, Min Temp: ${minTemp.toStringAsFixed(2)}°C');
+    });
+
+    return buffer.toString();
+  }
 
   List<Map<String, dynamic>> cities = [
     {'name': 'Alabama', 'lat': 32.806671, 'lon': -86.791130},
@@ -65,66 +150,4 @@ class _WeatherScreenState extends State<WeatherScreen> {
     {'name': 'West Virginia', 'lat': 38.491226, 'lon': -80.954570},
     {'name': 'Wisconsin', 'lat': 44.268543, 'lon': -89.616508},
   ];
-
-  @override
-  Widget build(BuildContext context) {
-    var weatherApi = Provider.of<WeatherApi>(context, listen: false);
-    var notificationService =
-        Provider.of<NotificationService>(context, listen: false);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Weatherly'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Autocomplete<Map<String, dynamic>>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text == '') {
-                  return const Iterable<Map<String, dynamic>>.empty();
-                }
-                return cities.where((city) {
-                  return city['name']
-                      .toString()
-                      .toLowerCase()
-                      .startsWith(textEditingValue.text.toLowerCase());
-                });
-              },
-              displayStringForOption: (Map<String, dynamic> option) =>
-                  option['name'],
-              onSelected: (Map<String, dynamic> selection) {
-                setState(() {
-                  _isLoading = true;
-                });
-                weatherApi
-                    .fetchWeather(selection['lat'], selection['lon'])
-                    .then((data) {
-                  setState(() {
-                    _weatherInfo =
-                        'City: ${data['name']} - Temp: ${data['main']['temp']}°C';
-                    _isLoading = false;
-                  });
-                }).catchError((error) {
-                  setState(() {
-                    _weatherInfo = "Failed to get weather";
-                    _isLoading = false;
-                  });
-                });
-              },
-            ),
-            Expanded(
-              child: Center(
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : Text(_weatherInfo),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
