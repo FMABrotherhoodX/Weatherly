@@ -4,6 +4,8 @@ import 'weather_api.dart';
 import 'notification_service.dart';
 
 class WeatherScreen extends StatefulWidget {
+  const WeatherScreen({super.key});
+
   @override
   _WeatherScreenState createState() => _WeatherScreenState();
 }
@@ -72,7 +74,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Weatherly'),
+        title: const Text('Weatherly'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -116,7 +118,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
             Expanded(
               child: Center(
                 child: _isLoading
-                    ? CircularProgressIndicator()
+                    ? const CircularProgressIndicator()
                     : Text(_weatherInfo),
               ),
             ),
