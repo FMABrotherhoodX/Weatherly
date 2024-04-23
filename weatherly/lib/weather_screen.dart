@@ -71,8 +71,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       ),
     );
   }
-
-  String _parseForecastData(Map<String, dynamic> data) {
+String _parseForecastData(Map<String, dynamic> data) {
     Map<String, List<double>> dailyTemperatures = {};
 
     // Aggregate temperatures by day
@@ -86,18 +85,37 @@ class _WeatherScreenState extends State<WeatherScreen> {
       dailyTemperatures[dateKey]?.add(temp);
     }
 
+    // Ensure all 7 days are included
+    DateTime today = DateTime.now();
+    for (int i = 0; i < 7; i++) {
+      DateTime date = today.add(Duration(days: i));
+      String dateKey = '${date.year}-${date.month}-${date.day}';
+      if (!dailyTemperatures.containsKey(dateKey)) {
+        dailyTemperatures[dateKey] = [];
+      }
+    }
+
     // Calculate average, max, and min temperatures for each day
     StringBuffer buffer = StringBuffer();
-    dailyTemperatures.forEach((key, temps) {
-      double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
-      double maxTemp = temps.reduce((a, b) => a > b ? a : b);
-      double minTemp = temps.reduce((a, b) => a < b ? a : b);
-      buffer.writeln(
-          '$key - Avg Temp: ${avgTemp.toStringAsFixed(2)}°C, Max Temp: ${maxTemp.toStringAsFixed(2)}°C, Min Temp: ${minTemp.toStringAsFixed(2)}°C');
-    });
+    for (int i = 0; i < 7; i++) {
+      DateTime date = today.add(Duration(days: i));
+      String dateKey = '${date.year}-${date.month}-${date.day}';
+      List<double> temps = dailyTemperatures[dateKey] ?? [];
+      if (temps.isNotEmpty) {
+        double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
+        double maxTemp = temps.reduce((a, b) => a > b ? a : b);
+        double minTemp = temps.reduce((a, b) => a < b ? a : b);
+        buffer.writeln(
+            '$dateKey - Avg Temp: ${avgTemp.toStringAsFixed(2)}°C, Max Temp: ${maxTemp.toStringAsFixed(2)}°C, Min Temp: ${minTemp.toStringAsFixed(2)}°C');
+      } else {
+        buffer.writeln('$dateKey - No data available');
+      }
+    }
 
     return buffer.toString();
   }
+
+
 
   List<Map<String, dynamic>> cities = [
     {'name': 'Alabama', 'lat': 32.806671, 'lon': -86.791130},
