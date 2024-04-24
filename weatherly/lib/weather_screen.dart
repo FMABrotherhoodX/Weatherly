@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'weather_api.dart';
 
@@ -12,6 +13,106 @@ class WeatherScreen extends StatefulWidget {
 class _WeatherScreenState extends State<WeatherScreen> {
   String _weatherInfo = 'Enter a city to get started';
   bool _isLoading = false;
+  bool _isCelsius = true;
+  late TapGestureRecognizer _temperatureToggleRecognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _temperatureToggleRecognizer = TapGestureRecognizer()
+      ..onTap = _toggleTemperatureUnit; // Ensure this is correctly configured
+  }
+
+  void _toggleTemperatureUnit() {
+    setState(() {
+      _isCelsius = !_isCelsius;
+      _weatherInfo = _convertTemperatureUnit(
+          _weatherInfo); // Assuming this method toggles the unit and formats the string
+    });
+  }
+
+  void _handleTap() {
+    print("Tap recognized!"); // Implement your tap handling logic here
+    // For example, toggle temperature unit without a button:
+    _toggleTemperatureUnit();
+  }
+
+  String _convertTemperatureUnit(String weatherInfo) {
+    var lines = weatherInfo.split('\n');
+    var buffer = StringBuffer();
+    for (var line in lines) {
+      if (line.contains('No data available') || line.isEmpty) {
+        buffer.writeln(line);
+      } else {
+        var parts = line.split('-');
+        if (parts.length < 2) continue; // Protect against out-of-range errors
+        var date = parts[0].trim();
+        var temps = parts[1].trim().split(', ');
+        if (temps.length < 3) continue; // Protect against out-of-range errors
+
+        var avgTemp = _safeParseInt(temps[0]);
+        var maxTemp = _safeParseInt(temps[1]);
+        var minTemp = _safeParseInt(temps[2]);
+
+        if (_isCelsius) {
+          // Convert to Celsius if currently Fahrenheit
+          avgTemp = ((avgTemp - 32) * 5 / 9).round();
+          maxTemp = ((maxTemp - 32) * 5 / 9).round();
+          minTemp = ((minTemp - 32) * 5 / 9).round();
+        } else {
+          // Convert to Fahrenheit if currently Celsius
+          avgTemp = (avgTemp * 9 / 5 + 32).round();
+          maxTemp = (maxTemp * 9 / 5 + 32).round();
+          minTemp = (minTemp * 9 / 5 + 32).round();
+        }
+        buffer.writeln(
+            '$date - Avg Temp: $avgTemp°${_isCelsius ? 'C' : 'F'}, Max Temp: $maxTemp°${_isCelsius ? 'C' : 'F'}, Min Temp: $minTemp°${_isCelsius ? 'C' : 'F'}');
+      }
+    }
+    return buffer.toString();
+  }
+
+  int _safeParseInt(String text) {
+    var tempText =
+        text.split(': ')[1].replaceAll('°C', '').replaceAll('°F', '');
+    return int.tryParse(tempText) ?? 0; // Returns 0 if parsing fails
+  }
+
+  String _parseForecastData(Map<String, dynamic> data) {
+    Map<String, List<double>> dailyTemperatures = {};
+
+    for (var forecast in data['list']) {
+      DateTime date = DateTime.parse(forecast['dt_txt']);
+      String dateKey = '${date.year}-${date.month}-${date.day}';
+      double temp = forecast['main']['temp'];
+      if (!dailyTemperatures.containsKey(dateKey)) {
+        dailyTemperatures[dateKey] = [];
+      }
+      dailyTemperatures[dateKey]?.add(temp);
+    }
+
+    DateTime today = DateTime.now();
+    StringBuffer buffer = StringBuffer();
+    for (int i = 1; i < 7; i++) {
+      DateTime date = today.add(Duration(days: i));
+      String dateKey = '${date.year}-${date.month}-${date.day}';
+      if (!dailyTemperatures.containsKey(dateKey)) {
+        dailyTemperatures[dateKey] = [];
+      }
+      List<double> temps = dailyTemperatures[dateKey] ?? [];
+      if (temps.isNotEmpty) {
+        double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
+        double maxTemp = temps.reduce((a, b) => a > b ? a : b);
+        double minTemp = temps.reduce((a, b) => a < b ? a : b);
+        buffer.writeln(
+            '$dateKey - Avg Temp: ${avgTemp.round()}°${_isCelsius ? 'C' : 'F'}, Max Temp: ${maxTemp.round()}°${_isCelsius ? 'C' : 'F'}, Min Temp: ${minTemp.round()}°${_isCelsius ? 'C' : 'F'}');
+      } else {
+        buffer.writeln('$dateKey - No data available');
+      }
+    }
+
+    return buffer.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +129,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
           children: <Widget>[
             Autocomplete<Map<String, dynamic>>(
               optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text == '') {
+                if (textEditingValue.text.isEmpty) {
                   return const Iterable<Map<String, dynamic>>.empty();
                 }
                 return cities.where((city) {
@@ -59,63 +160,36 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 });
               },
             ),
-            Expanded(
-              child: Center(
-                child: _isLoading
-                    ? const CircularProgressIndicator()
-                    : Text(_weatherInfo),
+            if (_isLoading)
+              const CircularProgressIndicator()
+            else
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        text: 'Click here to toggle temperature unit',
+                        style: TextStyle(color: Colors.blue, fontSize: 16),
+                        recognizer: _temperatureToggleRecognizer,
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text(_weatherInfo),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
-String _parseForecastData(Map<String, dynamic> data) {
-    Map<String, List<double>> dailyTemperatures = {};
 
-    // Aggregate temperatures by day
-    for (var forecast in data['list']) {
-      DateTime date = DateTime.parse(forecast['dt_txt']);
-      String dateKey = '${date.year}-${date.month}-${date.day}';
-      double temp = forecast['main']['temp'];
-      if (!dailyTemperatures.containsKey(dateKey)) {
-        dailyTemperatures[dateKey] = [];
-      }
-      dailyTemperatures[dateKey]?.add(temp);
-    }
-
-    // Ensure all 7 days are included
-    DateTime today = DateTime.now();
-    for (int i = 1; i < 7; i++) {
-      DateTime date = today.add(Duration(days: i));
-      String dateKey = '${date.year}-${date.month}-${date.day}';
-      if (!dailyTemperatures.containsKey(dateKey)) {
-        dailyTemperatures[dateKey] = [];
-      }
-    }
-
-    // Calculate average, max, and min temperatures for each day
-    StringBuffer buffer = StringBuffer();
-    for (int i = 1; i < 7; i++) {
-      DateTime date = today.add(Duration(days: i));
-      String dateKey = '${date.year}-${date.month}-${date.day}';
-      List<double> temps = dailyTemperatures[dateKey] ?? [];
-      if (temps.isNotEmpty) {
-        double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
-        double maxTemp = temps.reduce((a, b) => a > b ? a : b);
-        double minTemp = temps.reduce((a, b) => a < b ? a : b);
-        buffer.writeln(
-            '$dateKey - Avg Temp: ${avgTemp.toStringAsFixed(2)}°C, Max Temp: ${maxTemp.toStringAsFixed(2)}°C, Min Temp: ${minTemp.toStringAsFixed(2)}°C');
-      } else {
-        buffer.writeln('$dateKey - No data available');
-      }
-    }
-
-    return buffer.toString();
+  @override
+  void dispose() {
+    _temperatureToggleRecognizer.dispose();
+    super.dispose();
   }
-
-
 
   List<Map<String, dynamic>> cities = [
     {'name': 'Alabama', 'lat': 32.806671, 'lon': -86.791130},
