@@ -15,19 +15,43 @@ class _WeatherScreenState extends State<WeatherScreen> {
   bool _isLoading = false;
   bool _isCelsius = true;
   late TapGestureRecognizer _temperatureToggleRecognizer;
+  Map<String, dynamic>? _lastFetchedData;
 
   @override
   void initState() {
     super.initState();
     _temperatureToggleRecognizer = TapGestureRecognizer()
-      ..onTap = _toggleTemperatureUnit; // Ensure this is correctly configured
+      ..onTap = _toggleTemperatureUnit;
   }
 
   void _toggleTemperatureUnit() {
     setState(() {
       _isCelsius = !_isCelsius;
-      _weatherInfo = _convertTemperatureUnit(
-          _weatherInfo); // Assuming this method toggles the unit and formats the string
+      // Reformat weather info with new unit
+      if (_lastFetchedData != null) {
+        _weatherInfo = _parseForecastData(_lastFetchedData!);
+      }
+    });
+  }
+
+  void _fetchWeather(Map<String, dynamic> selection) {
+    var weatherApi = Provider.of<WeatherApi>(context, listen: false);
+    setState(() {
+      _isLoading = true;
+    });
+    weatherApi
+        .fetchWeatherForecast(selection['lat'], selection['lon'])
+        .then((data) {
+      setState(() {
+        _lastFetchedData = data;
+        _weatherInfo = _parseForecastData(data);
+        _isLoading = false;
+      });
+    }).catchError((error) {
+      setState(() {
+        _weatherInfo = "Failed to get weather forecast";
+        _isLoading = false;
+      });
     });
   }
 
@@ -48,28 +72,39 @@ class _WeatherScreenState extends State<WeatherScreen> {
         if (parts.length < 2) continue; // Protect against out-of-range errors
         var date = parts[0].trim();
         var temps = parts[1].trim().split(', ');
+
         if (temps.length < 3) continue; // Protect against out-of-range errors
 
+        // Parse temperatures and convert based on the current state
         var avgTemp = _safeParseInt(temps[0]);
         var maxTemp = _safeParseInt(temps[1]);
         var minTemp = _safeParseInt(temps[2]);
 
         if (_isCelsius) {
-          // Convert to Celsius if currently Fahrenheit
-          avgTemp = ((avgTemp - 32) * 5 / 9).round();
-          maxTemp = ((maxTemp - 32) * 5 / 9).round();
-          minTemp = ((minTemp - 32) * 5 / 9).round();
+          // Temps are currently in Fahrenheit, convert to Celsius
+          avgTemp = _fahrenheitToCelsius(avgTemp);
+          maxTemp = _fahrenheitToCelsius(maxTemp);
+          minTemp = _fahrenheitToCelsius(minTemp);
         } else {
-          // Convert to Fahrenheit if currently Celsius
-          avgTemp = (avgTemp * 9 / 5 + 32).round();
-          maxTemp = (maxTemp * 9 / 5 + 32).round();
-          minTemp = (minTemp * 9 / 5 + 32).round();
+          // Temps are currently in Celsius, convert to Fahrenheit
+          avgTemp = _celsiusToFahrenheit(avgTemp);
+          maxTemp = _celsiusToFahrenheit(maxTemp);
+          minTemp = _celsiusToFahrenheit(minTemp);
         }
+
         buffer.writeln(
-            '$date - Avg Temp: $avgTemp°${_isCelsius ? 'C' : 'F'}, Max Temp: $maxTemp°${_isCelsius ? 'C' : 'F'}, Min Temp: $minTemp°${_isCelsius ? 'C' : 'F'}');
+            '$date - Avg Temp: $avgTemp°${!_isCelsius ? 'C' : 'F'}, Max Temp: $maxTemp°${!_isCelsius ? 'C' : 'F'}, Min Temp: $minTemp°${!_isCelsius ? 'C' : 'F'}');
       }
     }
     return buffer.toString();
+  }
+
+  int _fahrenheitToCelsius(int fahrenheit) {
+    return ((fahrenheit - 32) * 5 / 9).round();
+  }
+
+  int _celsiusToFahrenheit(int celsius) {
+    return (celsius * 9 / 5 + 32).round();
   }
 
   int _safeParseInt(String text) {
@@ -84,7 +119,8 @@ class _WeatherScreenState extends State<WeatherScreen> {
     for (var forecast in data['list']) {
       DateTime date = DateTime.parse(forecast['dt_txt']);
       String dateKey = '${date.year}-${date.month}-${date.day}';
-      double temp = forecast['main']['temp'];
+      double temp = (forecast['main']['temp'] as num)
+          .toDouble(); // Ensure temp is treated as double
       if (!dailyTemperatures.containsKey(dateKey)) {
         dailyTemperatures[dateKey] = [];
       }
@@ -93,19 +129,24 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     DateTime today = DateTime.now();
     StringBuffer buffer = StringBuffer();
-    for (int i = 1; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
       DateTime date = today.add(Duration(days: i));
       String dateKey = '${date.year}-${date.month}-${date.day}';
-      if (!dailyTemperatures.containsKey(dateKey)) {
-        dailyTemperatures[dateKey] = [];
-      }
       List<double> temps = dailyTemperatures[dateKey] ?? [];
       if (temps.isNotEmpty) {
         double avgTemp = temps.reduce((a, b) => a + b) / temps.length;
         double maxTemp = temps.reduce((a, b) => a > b ? a : b);
         double minTemp = temps.reduce((a, b) => a < b ? a : b);
+
+        if (!_isCelsius) {
+          // Convert to Fahrenheit if _isCelsius is false
+          avgTemp = _cToF(avgTemp);
+          maxTemp = _cToF(maxTemp);
+          minTemp = _cToF(minTemp);
+        }
+
         buffer.writeln(
-            '$dateKey - Avg Temp: ${avgTemp.round()}°${_isCelsius ? 'C' : 'F'}, Max Temp: ${maxTemp.round()}°${_isCelsius ? 'C' : 'F'}, Min Temp: ${minTemp.round()}°${_isCelsius ? 'C' : 'F'}');
+            '$dateKey - Avg Temp: ${avgTemp.roundToDouble()}°${_isCelsius ? 'C' : 'F'}, Max Temp: ${maxTemp.roundToDouble()}°${_isCelsius ? 'C' : 'F'}, Min Temp: ${minTemp.roundToDouble()}°${_isCelsius ? 'C' : 'F'}');
       } else {
         buffer.writeln('$dateKey - No data available');
       }
@@ -114,10 +155,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return buffer.toString();
   }
 
+  double _cToF(double celsius) {
+    return (celsius * 9 / 5 + 32); // Return as double
+  }
+
   @override
   Widget build(BuildContext context) {
-    var weatherApi = Provider.of<WeatherApi>(context, listen: false);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Weatherly'),
@@ -141,24 +184,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
               },
               displayStringForOption: (Map<String, dynamic> option) =>
                   option['name'],
-              onSelected: (Map<String, dynamic> selection) {
-                setState(() {
-                  _isLoading = true;
-                });
-                weatherApi
-                    .fetchWeatherForecast(selection['lat'], selection['lon'])
-                    .then((data) {
-                  setState(() {
-                    _weatherInfo = _parseForecastData(data);
-                    _isLoading = false;
-                  });
-                }).catchError((error) {
-                  setState(() {
-                    _weatherInfo = "Failed to get weather forecast";
-                    _isLoading = false;
-                  });
-                });
-              },
+              onSelected: _fetchWeather,
             ),
             if (_isLoading)
               const CircularProgressIndicator()
@@ -170,11 +196,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     RichText(
                       text: TextSpan(
                         text: 'Click here to toggle temperature unit',
-                        style: TextStyle(color: Colors.blue, fontSize: 16),
+                        style:
+                            const TextStyle(color: Colors.blue, fontSize: 16),
                         recognizer: _temperatureToggleRecognizer,
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     Text(_weatherInfo),
                   ],
                 ),
