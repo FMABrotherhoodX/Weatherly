@@ -3,6 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'weather_api.dart';
 
+enum ColorTheme { blue, purple }
+
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
 
@@ -12,16 +14,98 @@ class WeatherScreen extends StatefulWidget {
 
 class _WeatherScreenState extends State<WeatherScreen> {
   String _weatherInfo = 'Enter a city to get started';
+
   bool _isLoading = false;
+
   bool _isCelsius = true;
+
   late TapGestureRecognizer _temperatureToggleRecognizer;
+
+  ThemeMode _themeMode = ThemeMode.light; // Default to light mode
+
+  ColorTheme _colorTheme = ColorTheme.blue;
+
   Map<String, dynamic>? _lastFetchedData;
+
+  final ThemeData lightBlueTheme = ThemeData(
+    brightness: Brightness.light,
+    primaryColor: Colors.blue,
+    scaffoldBackgroundColor: Colors.blue.shade100,
+    appBarTheme: const AppBarTheme(color: Colors.blue),
+  );
+
+  final ThemeData lightPurpleTheme = ThemeData(
+    brightness: Brightness.light,
+    primaryColor: Colors.purple,
+    scaffoldBackgroundColor: Colors.purple.shade100,
+    appBarTheme: const AppBarTheme(color: Colors.purple),
+  );
+
+  final ThemeData darkBlueTheme = ThemeData(
+    brightness: Brightness.dark,
+    primaryColor: Colors.blue,
+    scaffoldBackgroundColor: Colors.blue.shade800,
+    appBarTheme: AppBarTheme(color: Colors.blue.shade700),
+  );
+
+  final ThemeData darkPurpleTheme = ThemeData(
+    brightness: Brightness.dark,
+    primaryColor: Colors.purple,
+    scaffoldBackgroundColor: Colors.purple.shade800,
+    appBarTheme: AppBarTheme(color: Colors.purple.shade700),
+  );
 
   @override
   void initState() {
     super.initState();
     _temperatureToggleRecognizer = TapGestureRecognizer()
       ..onTap = _toggleTemperatureUnit;
+  }
+
+  void _toggleTheme() {
+    setState(() {
+      if (_themeMode == ThemeMode.light && _colorTheme == ColorTheme.blue) {
+        _colorTheme = ColorTheme.purple;
+      } else if (_themeMode == ThemeMode.light &&
+          _colorTheme == ColorTheme.purple) {
+        _themeMode = ThemeMode.dark;
+        _colorTheme = ColorTheme.blue;
+      } else if (_themeMode == ThemeMode.dark &&
+          _colorTheme == ColorTheme.blue) {
+        _colorTheme = ColorTheme.purple;
+      } else if (_themeMode == ThemeMode.dark &&
+          _colorTheme == ColorTheme.purple) {
+        _themeMode = ThemeMode.light;
+        _colorTheme = ColorTheme.blue;
+      }
+    });
+  }
+
+  ThemeData get currentTheme {
+    switch (_themeMode) {
+      case ThemeMode.light:
+        return _colorTheme == ColorTheme.blue
+            ? ThemeData.light().copyWith(
+                primaryColor: Colors.blue,
+                scaffoldBackgroundColor: Colors.blue.shade100,
+                appBarTheme: const AppBarTheme(color: Colors.blue))
+            : ThemeData.light().copyWith(
+                primaryColor: Colors.purple,
+                scaffoldBackgroundColor: Colors.purple.shade100,
+                appBarTheme: const AppBarTheme(color: Colors.purple));
+      case ThemeMode.dark:
+        return _colorTheme == ColorTheme.blue
+            ? ThemeData.dark().copyWith(
+                primaryColor: Colors.blue,
+                scaffoldBackgroundColor: Colors.blue.shade800,
+                appBarTheme: AppBarTheme(color: Colors.blue.shade700))
+            : ThemeData.dark().copyWith(
+                primaryColor: Colors.purple,
+                scaffoldBackgroundColor: Colors.purple.shade800,
+                appBarTheme: AppBarTheme(color: Colors.purple.shade700));
+      default:
+        return ThemeData.light(); // Default to light theme if unsure
+    }
   }
 
   void _toggleTemperatureUnit() {
@@ -161,52 +245,60 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Weatherly'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            Autocomplete<Map<String, dynamic>>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text.isEmpty) {
-                  return const Iterable<Map<String, dynamic>>.empty();
-                }
-                return cities.where((city) {
-                  return city['name']
-                      .toString()
-                      .toLowerCase()
-                      .startsWith(textEditingValue.text.toLowerCase());
-                });
-              },
-              displayStringForOption: (Map<String, dynamic> option) =>
-                  option['name'],
-              onSelected: _fetchWeather,
-            ),
-            if (_isLoading)
-              const CircularProgressIndicator()
-            else
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        text: 'Click here to toggle temperature unit',
-                        style:
-                            const TextStyle(color: Colors.blue, fontSize: 16),
-                        recognizer: _temperatureToggleRecognizer,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(_weatherInfo),
-                  ],
-                ),
+    return MaterialApp(
+      theme: currentTheme,
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Weatherly'),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: <Widget>[
+              Autocomplete<Map<String, dynamic>>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<Map<String, dynamic>>.empty();
+                  }
+                  return cities.where((city) {
+                    return city['name']
+                        .toString()
+                        .toLowerCase()
+                        .startsWith(textEditingValue.text.toLowerCase());
+                  });
+                },
+                displayStringForOption: (Map<String, dynamic> option) =>
+                    option['name'],
+                onSelected: _fetchWeather,
               ),
-          ],
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          text: 'Click here to toggle temperature unit',
+                          style:
+                              const TextStyle(color: Colors.blue, fontSize: 16),
+                          recognizer: _temperatureToggleRecognizer,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(_weatherInfo),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _toggleTheme,
+          tooltip: 'Toggle Theme',
+          child: const Icon(Icons.color_lens),
         ),
       ),
     );
