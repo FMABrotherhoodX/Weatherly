@@ -87,7 +87,7 @@ String _parseForecastData(Map<String, dynamic> data) {
 
     // Ensure all 7 days are included
     DateTime today = DateTime.now();
-    for (int i = 0; i < 7; i++) {
+    for (int i = 1; i < 7; i++) {
       DateTime date = today.add(Duration(days: i));
       String dateKey = '${date.year}-${date.month}-${date.day}';
       if (!dailyTemperatures.containsKey(dateKey)) {
@@ -97,7 +97,7 @@ String _parseForecastData(Map<String, dynamic> data) {
 
     // Calculate average, max, and min temperatures for each day
     StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < 7; i++) {
+    for (int i = 1; i < 7; i++) {
       DateTime date = today.add(Duration(days: i));
       String dateKey = '${date.year}-${date.month}-${date.day}';
       List<double> temps = dailyTemperatures[dateKey] ?? [];
