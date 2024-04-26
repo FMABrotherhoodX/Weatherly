@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import 'weather_api.dart';
+import 'weathermap.dart';
 
 enum ColorTheme { blue, purple }
 
@@ -303,10 +304,34 @@ class _WeatherScreenState extends State<WeatherScreen> {
             ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _toggleTheme,
-          tooltip: 'Toggle Theme',
-          child: const Icon(Icons.color_lens),
+        floatingActionButton: Stack(
+          children: <Widget>[
+            Positioned(
+              right: 0,
+              bottom: 80,
+              child: FloatingActionButton(
+                onPressed: _toggleTheme,
+                tooltip: 'Toggle Theme',
+                child: const Icon(Icons.color_lens),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => WeatherMapScreen(
+                            weatherData: _lastFetchedData ?? {})),
+                  );
+                },
+                tooltip: 'Show Map',
+                child: const Icon(Icons.map),
+              ),
+            ),
+          ],
         ),
       ),
     );
