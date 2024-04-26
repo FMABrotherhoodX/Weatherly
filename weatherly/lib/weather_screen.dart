@@ -2,6 +2,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
+import 'user_report.dart';
 import 'weather_api.dart';
 import 'weathermap.dart';
 
@@ -100,14 +101,13 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 scaffoldBackgroundColor: Colors.purple.shade800,
                 appBarTheme: AppBarTheme(color: Colors.purple.shade700));
       default:
-        return ThemeData.light(); // Default to light theme if unsure
+        return ThemeData.light();
     }
   }
 
   void _toggleTemperatureUnit() {
     setState(() {
       _isCelsius = !_isCelsius;
-      // Reformat weather info with new unit
       if (_lastFetchedData != null) {
         _weatherInfo = _parseForecastData(_lastFetchedData!);
       }
@@ -142,7 +142,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
       DateTime date = DateTime.parse(forecast['dt_txt']);
       String dateKey = '${date.year}-${date.month}-${date.day}';
       double temp = (forecast['main']['temp'] as num)
-          .toDouble(); // Ensure temp is treated as double
+          .toDouble();
       if (!dailyTemperatures.containsKey(dateKey)) {
         dailyTemperatures[dateKey] = [];
       }
@@ -151,7 +151,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     DateTime today = DateTime.now();
     StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
       DateTime date = today.add(Duration(days: i));
       String dateKey = '${date.year}-${date.month}-${date.day}';
       List<double> temps = dailyTemperatures[dateKey] ?? [];
@@ -161,7 +161,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
         double minTemp = temps.reduce((a, b) => a < b ? a : b);
 
         if (!_isCelsius) {
-          // Convert to Fahrenheit if _isCelsius is false
           avgTemp = _cToF(avgTemp);
           maxTemp = _cToF(maxTemp);
           minTemp = _cToF(minTemp);
@@ -178,7 +177,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   double _cToF(double celsius) {
-    return (celsius * 9 / 5 + 32); // Return as double
+    return (celsius * 9 / 5 + 32);
   }
 
   @override
@@ -241,11 +240,11 @@ class _WeatherScreenState extends State<WeatherScreen> {
                     child: Material(
                       elevation: 4.0,
                       child: SizedBox(
-                        width: 300, // Specify the width of the container
-                        height: 200, // Limit the height of the container
+                        width: 300,
+                        height: 200,
                         child: ListView.builder(
                           padding: const EdgeInsets.all(
-                              0.0), // Remove any inherent padding
+                              0.0),
                           itemCount: options.length,
                           itemBuilder: (BuildContext context, int index) {
                             final Map<String, dynamic> option =
@@ -285,7 +284,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                           text: 'Click here to toggle temperature unit',
                           style: GoogleFonts.teko(
                             textStyle: const TextStyle(
-                                color: Colors.blue, fontSize: 24),
+                                color: Colors.blue, fontSize: 13),
                           ),
                           recognizer: _temperatureToggleRecognizer,
                         ),
@@ -295,7 +294,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         _weatherInfo,
                         style: GoogleFonts.teko(
                           textStyle: const TextStyle(
-                              fontSize: 28, fontWeight: FontWeight.bold),
+                              fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -329,6 +328,23 @@ class _WeatherScreenState extends State<WeatherScreen> {
                 },
                 tooltip: 'Show Map',
                 child: const Icon(Icons.map),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 160,
+              child: FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const UserReportScreen(
+                              cities: [],
+                            )),
+                  );
+                },
+                tooltip: 'Report Issue',
+                child: const Icon(Icons.report_problem),
               ),
             ),
           ],

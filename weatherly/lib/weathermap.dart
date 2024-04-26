@@ -20,7 +20,7 @@ class WeatherMapScreen extends StatelessWidget {
     final LatLng center = LatLng(latitude, longitude);
 
     // Create a new Google Map Controller
-    final Completer<GoogleMapController> _controller = Completer();
+    final Completer<GoogleMapController> controller = Completer();
 
     // Prepare the marker with weather information
     final String name = weatherData['name'] ?? 'Unknown';
@@ -28,7 +28,7 @@ class WeatherMapScreen extends StatelessWidget {
     final String description =
         weatherData['description']?.toString() ?? 'No description';
     final Marker marker = Marker(
-      markerId: MarkerId('selectedLocation'),
+      markerId: const MarkerId('selectedLocation'),
       position: center,
       infoWindow: InfoWindow(
           title: name, snippet: 'Temp: $temperature, Desc: $description'),
@@ -46,8 +46,9 @@ class WeatherMapScreen extends StatelessWidget {
         ),
         mapType: MapType.normal,
         markers: {marker},
-        onMapCreated: (GoogleMapController controller) {
-          _controller.complete(controller);
+        onMapCreated: (GoogleMapController createdController) {
+          controller.complete(
+              createdController); // Pass the created controller to the Completer
         },
       ),
     );
