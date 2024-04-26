@@ -1,3 +1,4 @@
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
@@ -14,17 +15,11 @@ class WeatherScreen extends StatefulWidget {
 
 class _WeatherScreenState extends State<WeatherScreen> {
   String _weatherInfo = 'Enter a city to get started';
-
   bool _isLoading = false;
-
   bool _isCelsius = true;
-
   late TapGestureRecognizer _temperatureToggleRecognizer;
-
   ThemeMode _themeMode = ThemeMode.light; // Default to light mode
-
   ColorTheme _colorTheme = ColorTheme.blue;
-
   Map<String, dynamic>? _lastFetchedData;
 
   final ThemeData lightBlueTheme = ThemeData(
@@ -139,64 +134,6 @@ class _WeatherScreenState extends State<WeatherScreen> {
     });
   }
 
-  void _handleTap() {
-    print("Tap recognized!"); // Implement your tap handling logic here
-    // For example, toggle temperature unit without a button:
-    _toggleTemperatureUnit();
-  }
-
-  String _convertTemperatureUnit(String weatherInfo) {
-    var lines = weatherInfo.split('\n');
-    var buffer = StringBuffer();
-    for (var line in lines) {
-      if (line.contains('No data available') || line.isEmpty) {
-        buffer.writeln(line);
-      } else {
-        var parts = line.split('-');
-        if (parts.length < 2) continue; // Protect against out-of-range errors
-        var date = parts[0].trim();
-        var temps = parts[1].trim().split(', ');
-
-        if (temps.length < 3) continue; // Protect against out-of-range errors
-
-        // Parse temperatures and convert based on the current state
-        var avgTemp = _safeParseInt(temps[0]);
-        var maxTemp = _safeParseInt(temps[1]);
-        var minTemp = _safeParseInt(temps[2]);
-
-        if (_isCelsius) {
-          // Temps are currently in Fahrenheit, convert to Celsius
-          avgTemp = _fahrenheitToCelsius(avgTemp);
-          maxTemp = _fahrenheitToCelsius(maxTemp);
-          minTemp = _fahrenheitToCelsius(minTemp);
-        } else {
-          // Temps are currently in Celsius, convert to Fahrenheit
-          avgTemp = _celsiusToFahrenheit(avgTemp);
-          maxTemp = _celsiusToFahrenheit(maxTemp);
-          minTemp = _celsiusToFahrenheit(minTemp);
-        }
-
-        buffer.writeln(
-            '$date - Avg Temp: $avgTemp°${!_isCelsius ? 'C' : 'F'}, Max Temp: $maxTemp°${!_isCelsius ? 'C' : 'F'}, Min Temp: $minTemp°${!_isCelsius ? 'C' : 'F'}');
-      }
-    }
-    return buffer.toString();
-  }
-
-  int _fahrenheitToCelsius(int fahrenheit) {
-    return ((fahrenheit - 32) * 5 / 9).round();
-  }
-
-  int _celsiusToFahrenheit(int celsius) {
-    return (celsius * 9 / 5 + 32).round();
-  }
-
-  int _safeParseInt(String text) {
-    var tempText =
-        text.split(': ')[1].replaceAll('°C', '').replaceAll('°F', '');
-    return int.tryParse(tempText) ?? 0; // Returns 0 if parsing fails
-  }
-
   String _parseForecastData(Map<String, dynamic> data) {
     Map<String, List<double>> dailyTemperatures = {};
 
@@ -213,7 +150,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
 
     DateTime today = DateTime.now();
     StringBuffer buffer = StringBuffer();
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
       DateTime date = today.add(Duration(days: i));
       String dateKey = '${date.year}-${date.month}-${date.day}';
       List<double> temps = dailyTemperatures[dateKey] ?? [];
@@ -249,7 +186,13 @@ class _WeatherScreenState extends State<WeatherScreen> {
       theme: currentTheme,
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Weatherly'),
+          title: Text(
+            'Weatherly',
+            style: GoogleFonts.teko(
+              textStyle:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ),
         ),
         body: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -261,16 +204,73 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   if (textEditingValue.text.isEmpty) {
                     return const Iterable<Map<String, dynamic>>.empty();
                   }
-                  return cities.where((city) {
+                  return cities.where((Map<String, dynamic> city) {
                     return city['name']
                         .toString()
                         .toLowerCase()
                         .startsWith(textEditingValue.text.toLowerCase());
                   });
                 },
+                fieldViewBuilder: (
+                  BuildContext context,
+                  TextEditingController fieldTextEditingController,
+                  FocusNode fieldFocusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  return TextField(
+                    controller: fieldTextEditingController,
+                    focusNode: fieldFocusNode,
+                    style: GoogleFonts.teko(
+                        textStyle: const TextStyle(fontSize: 18)),
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: 'Search City',
+                      labelStyle: GoogleFonts.teko(
+                          textStyle: const TextStyle(fontSize: 16)),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (
+                  BuildContext context,
+                  AutocompleteOnSelected<Map<String, dynamic>> onSelected,
+                  Iterable<Map<String, dynamic>> options,
+                ) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        width: 300, // Specify the width of the container
+                        height: 200, // Limit the height of the container
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(
+                              0.0), // Remove any inherent padding
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final Map<String, dynamic> option =
+                                options.elementAt(index);
+
+                            return ListTile(
+                              title: Text(
+                                option['name'],
+                                style: GoogleFonts.teko(
+                                    textStyle: const TextStyle(fontSize: 18)),
+                              ),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
                 displayStringForOption: (Map<String, dynamic> option) =>
                     option['name'],
-                onSelected: _fetchWeather,
+                onSelected: (Map<String, dynamic> selection) {
+                  _fetchWeather(selection);
+                },
               ),
               if (_isLoading)
                 const CircularProgressIndicator()
@@ -282,13 +282,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
                       RichText(
                         text: TextSpan(
                           text: 'Click here to toggle temperature unit',
-                          style:
-                              const TextStyle(color: Colors.blue, fontSize: 16),
+                          style: GoogleFonts.teko(
+                            textStyle: const TextStyle(
+                                color: Colors.blue, fontSize: 24),
+                          ),
                           recognizer: _temperatureToggleRecognizer,
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Text(_weatherInfo),
+                      Text(
+                        _weatherInfo,
+                        style: GoogleFonts.teko(
+                          textStyle: const TextStyle(
+                              fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ],
                   ),
                 ),
