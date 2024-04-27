@@ -16,7 +16,7 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  String _weatherInfo = 'Enter a city to get started';
+  String _weatherInfo = 'Enter a state to get started';
   bool _isLoading = false;
   bool _isCelsius = true;
   late TapGestureRecognizer _temperatureToggleRecognizer;
@@ -141,8 +141,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
     for (var forecast in data['list']) {
       DateTime date = DateTime.parse(forecast['dt_txt']);
       String dateKey = '${date.year}-${date.month}-${date.day}';
-      double temp = (forecast['main']['temp'] as num)
-          .toDouble();
+      double temp = (forecast['main']['temp'] as num).toDouble();
       if (!dailyTemperatures.containsKey(dateKey)) {
         dailyTemperatures[dateKey] = [];
       }
@@ -243,8 +242,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         width: 300,
                         height: 200,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(
-                              0.0),
+                          padding: const EdgeInsets.all(0.0),
                           itemCount: options.length,
                           itemBuilder: (BuildContext context, int index) {
                             final Map<String, dynamic> option =
