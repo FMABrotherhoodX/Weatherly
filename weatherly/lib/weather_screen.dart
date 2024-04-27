@@ -16,7 +16,7 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  String _weatherInfo = 'Enter a city to get started';
+  String _weatherInfo = 'Enter a state to get started';
   bool _isLoading = false;
   bool _isCelsius = true;
   late TapGestureRecognizer _temperatureToggleRecognizer;
