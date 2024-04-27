@@ -223,7 +223,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                         textStyle: const TextStyle(fontSize: 18)),
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      labelText: 'Search City',
+                      labelText: 'Search State',
                       labelStyle: GoogleFonts.teko(
                           textStyle: const TextStyle(fontSize: 16)),
                     ),
